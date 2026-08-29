@@ -2,6 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { mandate, paymentAttempts, type AttemptResult } from "@/lib/demo-data";
 import { DemoTag, Field, Panel } from "./primitives";
+import { LiveSettlement } from "./LiveSettlement";
 
 export function AgentMandate() {
   const [log, setLog] = useState<AttemptResult[]>([]);
@@ -139,6 +140,8 @@ export function AgentMandate() {
             </ul>
           )}
         </Panel>
+
+        <LiveSettlement latest={log[0] ?? null} />
       </div>
     </div>
   );

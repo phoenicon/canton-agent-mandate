@@ -86,6 +86,22 @@ export const mandate = {
   revocable: true,
 };
 
+// Live settlement demo constants, from the real DevNet operator run. The
+// commercial request (£) is deliberately distinct from the technical settlement
+// proof (CC): £240 != 1 CC. The transfer created an OFFER — 1 CC is locked in a
+// TransferInstruction pending receiver acceptance; no final settlement claimed.
+export const settlement = {
+  sender: "colin-agent",
+  instrument: "Amulet",
+  proofCC: "1 CC",
+  before: "10 CC",
+  spendableAfter: "9 CC",
+  lockedInOffer: "1 CC",
+  transferKind: "offer",
+  instructionCid: "00b1d524…62ef8fe6",
+  network: "Cantor8 DevNet",
+};
+
 export type AttemptId = "ok" | "cap" | "counterparty";
 
 export type AttemptResult = {

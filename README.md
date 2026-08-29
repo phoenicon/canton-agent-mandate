@@ -136,8 +136,28 @@ flowchart TD
     E --> F[Agent Mandate]
 ```
 
-Authorisation (the Daml mandate) and settlement (the Canton Coin transfer) are
-currently **separate steps, not one atomic transaction** — we do not claim atomic
+### Authorisation → settlement (two steps)
+
+The demo runs a two-step path, in this order:
+
+1. **Daml authorisation** — the Agent Mandate decides `PERMITTED` / `REJECTED`.
+2. **Canton Token Standard settlement** — a real Amulet transfer, executed
+   **only if step 1 permitted it**.
+
+A permitted request produces a **real Token Standard transfer offer** on DevNet:
+a **1 CC** transfer from `colin-agent` where the coin is **locked in a
+`TransferInstruction`** (`transferKind: offer`) pending the receiver's
+acceptance. Verified on-ledger: **before 10 CC → spendable after 9 CC, 1 CC
+locked in the offer**. Receiver acceptance is pending, so **no final settlement
+is claimed**. The commercial amount and the settlement amount are deliberately
+distinct — **£240 ≠ 1 CC**; the CC transfer is a settlement *proof*, not the
+commercial sum.
+
+**Rejected requests never invoke settlement** — over-cap, unapproved
+counterparty, and post-revocation attempts are stopped at step 1, so no transfer
+is ever attempted and the balance is unchanged.
+
+These are **separate steps, not one atomic transaction** — we do not claim atomic
 authorisation + settlement. Full engineering record, coordinates, and debugging
 notes: **[docs/devnet/](docs/devnet/README.md)**.
 
