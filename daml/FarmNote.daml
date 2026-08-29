@@ -7,6 +7,10 @@
 -- Deliberately self-contained: no Canton Coin, no token standard, no Splice
 -- DARs. There is NO cash leg here — accepting records the holding only; nothing
 -- is paid. That is intentional for this milestone.
+--
+-- Visibility model (proved in FarmNoteTest): issuer signs, the intended investor
+-- is an observer that can act, the regulator is a watch-only observer, and any
+-- unrelated party sees nothing and can do nothing.
 module FarmNote where
 
 -- The issuer's offer to a specific investor. The issuer alone signs it; the
@@ -15,6 +19,7 @@ template FarmNoteOffer
   with
     issuer    : Party
     investor  : Party
+    regulator : Party
     farmId    : Text
     units     : Decimal
     unitPrice : Decimal
@@ -22,7 +27,9 @@ template FarmNoteOffer
     ensure units > 0.0 && unitPrice > 0.0
 
     signatory issuer
-    observer investor
+    -- investor can act (Accept/Decline); regulator only watches. Neither an
+    -- observer role authorises the contract, they only grant visibility.
+    observer investor, regulator
 
     -- Only the intended investor may accept. Consuming: the offer is archived
     -- and the holding is created in the same transaction.
@@ -30,7 +37,7 @@ template FarmNoteOffer
       controller investor
       do
         create FarmNoteHolding with
-          issuer; owner = investor; farmId; units; unitPrice
+          issuer; owner = investor; regulator; farmId; units; unitPrice
 
     -- Either side can walk away from an unaccepted offer.
     choice Decline : ()
@@ -48,6 +55,7 @@ template FarmNoteHolding
   with
     issuer    : Party
     owner     : Party
+    regulator : Party
     farmId    : Text
     units     : Decimal
     unitPrice : Decimal
@@ -55,3 +63,5 @@ template FarmNoteHolding
     ensure units > 0.0 && unitPrice > 0.0
 
     signatory issuer, owner
+    -- The regulator watches every holding but signs nothing and controls nothing.
+    observer regulator

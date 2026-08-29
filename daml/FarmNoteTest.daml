@@ -1,7 +1,13 @@
 -- Tests for the minimal FarmNote workflow. `daml test` runs these in-memory.
+--
+-- The privacy test uses `queryContractId party cid`, which returns the contract
+-- ONLY if that party is a stakeholder (signatory or observer). A returned `Some`
+-- / `None` is therefore the ledger's own visibility decision for that party, not
+-- an inference of ours.
 module FarmNoteTest where
 
 import DA.Assert ((===))
+import DA.Optional (isSome, isNone)
 import Daml.Script
 import FarmNote
 
@@ -9,13 +15,14 @@ import FarmNote
 -- holding records exactly what was offered.
 testFarmNoteAccept : Script ()
 testFarmNoteAccept = script do
-  issuer   <- allocateParty "Issuer"
-  investor <- allocateParty "Investor"
+  issuer    <- allocateParty "Issuer"
+  investor  <- allocateParty "Investor"
+  regulator <- allocateParty "Regulator"
 
   -- Issuer creates the offer.
   offer <- submit issuer do
     createCmd FarmNoteOffer with
-      issuer; investor
+      issuer; investor; regulator
       farmId = "FARM-001"; units = 100.0; unitPrice = 25.0
 
   -- The intended investor accepts; this consumes the offer and creates a holding.
@@ -25,6 +32,7 @@ testFarmNoteAccept = script do
   Some h <- queryContractId investor holdingCid
   h.issuer    === issuer
   h.owner     === investor
+  h.regulator === regulator
   h.farmId    === "FARM-001"
   h.units     === 100.0
   h.unitPrice === 25.0
@@ -34,16 +42,61 @@ testFarmNoteAccept = script do
 -- Adversarial: a party who is not the intended investor cannot accept the offer.
 testWrongInvestorCannotAccept : Script ()
 testWrongInvestorCannotAccept = script do
-  issuer   <- allocateParty "Issuer"
-  investor <- allocateParty "Investor"
-  intruder <- allocateParty "Intruder"
+  issuer    <- allocateParty "Issuer"
+  investor  <- allocateParty "Investor"
+  regulator <- allocateParty "Regulator"
+  intruder  <- allocateParty "Intruder"
 
   offer <- submit issuer do
     createCmd FarmNoteOffer with
-      issuer; investor
+      issuer; investor; regulator
       farmId = "FARM-001"; units = 100.0; unitPrice = 25.0
 
   -- The intruder is not the controller of Accept, so the ledger rejects it.
   submitMustFail intruder do exerciseCmd offer Accept
+
+  pure ()
+
+-- Privacy proof: different parties genuinely have different visibility, and an
+-- outsider can neither see nor act. Every assertion below is derived from the
+-- ledger via queryContractId / submitMustFail — none is assumed.
+testFarmNotePrivacy : Script ()
+testFarmNotePrivacy = script do
+  issuer    <- allocateParty "Issuer"
+  investor  <- allocateParty "Investor"
+  regulator <- allocateParty "Regulator"
+  outsider  <- allocateParty "Outsider"
+
+  offer <- submit issuer do
+    createCmd FarmNoteOffer with
+      issuer; investor; regulator
+      farmId = "FARM-001"; units = 100.0; unitPrice = 25.0
+
+  -- 1-4 on the OFFER: issuer (signatory), investor (observer) and regulator
+  -- (observer) each see it; the unrelated outsider does not.
+  offerAsIssuer    <- queryContractId issuer offer
+  offerAsInvestor  <- queryContractId investor offer
+  offerAsRegulator <- queryContractId regulator offer
+  offerAsOutsider  <- queryContractId outsider offer
+  assertMsg "issuer must see the offer"    (isSome offerAsIssuer)
+  assertMsg "investor must see the offer"  (isSome offerAsInvestor)
+  assertMsg "regulator must see the offer" (isSome offerAsRegulator)
+  assertMsg "outsider must NOT see the offer" (isNone offerAsOutsider)
+
+  -- 5. The outsider cannot exercise ANY choice on the offer.
+  submitMustFail outsider do exerciseCmd offer Accept
+  submitMustFail outsider do exerciseCmd offer Decline
+  submitMustFail outsider do exerciseCmd offer Withdraw
+
+  -- Accept, then repeat the visibility proof on the resulting HOLDING.
+  holdingCid <- submit investor do exerciseCmd offer Accept
+  holdAsIssuer    <- queryContractId issuer holdingCid
+  holdAsInvestor  <- queryContractId investor holdingCid
+  holdAsRegulator <- queryContractId regulator holdingCid
+  holdAsOutsider  <- queryContractId outsider holdingCid
+  assertMsg "issuer must see the holding"    (isSome holdAsIssuer)
+  assertMsg "owner must see the holding"     (isSome holdAsInvestor)
+  assertMsg "regulator must see the holding" (isSome holdAsRegulator)
+  assertMsg "outsider must NOT see the holding" (isNone holdAsOutsider)
 
   pure ()
