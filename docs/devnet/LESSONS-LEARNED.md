@@ -39,6 +39,18 @@ Cantor8 DevNet. Useful to any team doing token-standard work on Canton.
     funding took real debugging. Prove the settlement path before demo day, not
     on it.
 
+11. **An `offer` is not final settlement.** A transfer without a live receiver
+    preapproval comes back as `transferKind: offer`: the sender's coin is locked
+    into a `TransferInstruction` (spendable 10 → 9 CC, 1 CC locked), but the
+    receiver has nothing until they accept. Real state change ≠ completed
+    settlement.
+
+12. **The registry choice-context is part of Token Standard execution.**
+    Accepting the instruction needs a valid choice-context from the registry; on
+    DevNet that `accept` endpoint returned `404` for our instruction. That is the
+    remaining integration boundary — the coin is committed to an offer, and
+    acceptance (or a withdraw) is the next step, not something to paper over.
+
 ## Why this ties back to the product
 
 Getting real Canton Coin into a real party made the core thesis concrete:

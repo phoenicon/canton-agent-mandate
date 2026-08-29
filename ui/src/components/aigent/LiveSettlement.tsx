@@ -4,10 +4,12 @@ import { settlement, type AttemptResult } from "@/lib/demo-data";
 import { Panel } from "./primitives";
 
 // Compact live-settlement panel. Mirrors the mandate decision:
-//   permitted  -> AUTHORIZED -> SETTLING -> CONFIRMED (real 1 CC proof)
+//   permitted  -> AUTHORIZED -> SETTLING -> OFFER CREATED (real 1 CC locked)
 //   rejected   -> BLOCKED (settlement NOT invoked, balance unchanged)
 // Deterministic and network-free so the demo cannot break; the real DevNet
-// transfer is operator-run and its verified before/after are shown here.
+// transfer was operator-run and its verified before/after are shown here.
+// The transfer created an OFFER (1 CC locked, transferKind: offer); receiver
+// acceptance is still pending, so no final settlement is claimed.
 
 type Phase = "idle" | "authorized" | "settling" | "confirmed" | "blocked";
 
@@ -101,11 +103,12 @@ export function LiveSettlement({ latest }: { latest: AttemptResult | null }) {
           <Row k="transferKind" v={settlement.transferKind} tone="warn" />
           <Row k="Instruction CID" v={settlement.instructionCid} />
           <Row k="Status" v="OFFER CREATED" tone="ok" />
+          <Row k="Receiver acceptance" v="PENDING" tone="warn" />
           <p className="mt-2 font-mono text-[0.7rem] text-warning">
             Receiver acceptance pending — no final settlement claimed.
           </p>
           <p className="mt-1 font-mono text-[0.7rem] text-muted-foreground/80">
-            £ commercial amount ≠ CC settlement amount. Real {settlement.instrument} on {settlement.network}.
+            £240 ≠ 1 CC. Real {settlement.instrument} on {settlement.network}.
           </p>
         </div>
       )}

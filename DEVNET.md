@@ -57,9 +57,13 @@ holdings
 Token Standard transfer
 ```
 
-Verified today: identity/party and reachable Ledger API. The steps below funding
-(transfer preapproval, funding, live holdings, Token Standard transfer) are the
-intended path and are **not yet claimed as executed** — see the boundary below.
+Verified today: **the whole chain up to a Token Standard transfer offer.**
+Identity/party, `CanActAs`, a submitted transfer preapproval, real funding
+(`colin-agent` held 10 CC as two unlocked 5 CC Amulet holdings), and a real
+Token Standard transfer **offer** of 1 CC to `greenfeed` — spendable 10 → 9 CC,
+1 CC locked in the offer (`transferKind: offer`). **Final receiver acceptance is
+still pending** (the accept path hit a registry choice-context 404). See the
+boundary below and [docs/devnet/TOKEN-TRANSFERS.md](docs/devnet/TOKEN-TRANSFERS.md).
 
 ## Architecture distinction
 
@@ -77,8 +81,9 @@ They are two steps, not one ledger transaction.
 
 - Unless both are combined in a single ledger transaction, **do not claim atomic
   authorisation + settlement.**
-- **Do not state** that Canton Coin funding, a transfer preapproval, or a live
-  Token Standard transfer has happened unless repository or current evidence
-  proves it. As of now, none of those is claimed as executed.
+- **A real Token Standard transfer offer was created** (1 CC locked, 10 → 9 CC
+  spendable). **Do not claim final settlement** — receiver acceptance is pending,
+  so `greenfeed` has **not** received the 1 CC. An `offer` is not final settlement.
 - What *is* claimed: the Daml authority and privacy rules are implemented and
-  tested, and DevNet authentication + Ledger API connectivity are working.
+  tested; DevNet authentication + `CanActAs` are working; 10 CC real funding; and
+  a real 1 CC Token Standard transfer offer to `greenfeed`, acceptance pending.

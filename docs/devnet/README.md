@@ -20,6 +20,27 @@ Total: 10 CC
 A `TransferPreapprovalProposal` was successfully submitted, and Ledger
 `CanActAs` rights were established so the party could submit commands.
 
+**Newest verified state — a real Token Standard transfer offer.** A permitted
+Daml mandate decision was used to create a real 1 CC transfer from `colin-agent`
+to a real `greenfeed` party:
+
+```
+Mandate decision:    PERMITTED
+Commercial request:  £240 → GreenFeed   (£240 ≠ 1 CC)
+Technical proof:     1 CC
+Before spendable:    10 CC
+After spendable:     9 CC
+Locked in offer:     1 CC
+transferKind:        offer
+Status:              OFFER CREATED
+Receiver acceptance: PENDING
+```
+
+The 1 CC is **locked in a real `TransferInstruction`** (an offer). **`greenfeed`
+has not received it** — receiver acceptance is pending, and the accept path hit a
+registry choice-context 404 (see [TROUBLESHOOTING.md](TROUBLESHOOTING.md)). An
+`offer` is not final settlement; we do not claim settlement completed.
+
 ## Flow
 
 ```

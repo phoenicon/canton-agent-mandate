@@ -70,6 +70,33 @@ Total: 10 CC
 Two holdings rather than one is normal — a balance is a set of UTXO-like
 contracts.
 
+## The real 1 CC transfer offer (newest state)
+
+A permitted Daml mandate decision was then used to create a **real Token Standard
+transfer** of 1 CC from `colin-agent` to a real `greenfeed` party:
+
+```
+sender               colin-agent
+receiver             greenfeed
+before spendable     10 CC
+after spendable      9 CC
+locked in offer      1 CC
+transferKind         offer
+status               OFFER CREATED
+```
+
+The registry returned `transferKind: offer` (the receiver has no live preapproval
+we control), so the 1 CC is now held in a **`TransferInstruction`** and shows as a
+**locked** 1 CC holding on the sender, with the remaining 9 CC spendable. This is
+a real ledger state change, verified by re-querying holdings before and after.
+
+**Acceptance is pending — no final settlement.** Attempting to accept the
+instruction on behalf of `greenfeed` returned an `HTTP 404` from the registry's
+`.../transfer-instruction/v1/<cid>/choice-contexts/accept` endpoint. So the 1 CC
+is committed into an offer but **`greenfeed` has not received it**. An `offer` is
+not final settlement. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for the
+registry choice-context lesson.
+
 ## The `farmfort2` experiment: visibility ≠ authority
 
 An old hackathon party remained visible:
@@ -97,4 +124,6 @@ The failed transaction did **not** move those funds.
 
 Authorisation (the Daml Agent Mandate) and settlement (the Amulet transfer) are
 **separate steps** here, not a single atomic ledger transaction. We do **not**
-claim atomic authorisation + settlement.
+claim atomic authorisation + settlement, and we do **not** claim final
+settlement: a real 1 CC transfer **offer** exists (1 CC locked, 10 → 9 CC), but
+receiver acceptance is pending, so `greenfeed` has not received the 1 CC.
