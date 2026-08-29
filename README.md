@@ -116,6 +116,31 @@ Successful actions therefore leave a permanent, signed record. Rejected attempts
 are demonstrated through failed submissions and the adversarial tests — they do
 not create a successful charge, and so leave no receipt.
 
+## Real Canton DevNet Integration
+
+Beyond the in-memory tests, we connected to the shared **Cantor8 DevNet** and
+proved the real authority chain end to end:
+
+- a real Canton party, **`colin-agent`**, with real **Amulet (Canton Coin)**
+  holdings — **10 CC**, as two unlocked 5.0 holdings
+- a **`TransferPreapprovalProposal`** successfully submitted (with a recorded
+  `updateId` and `completionOffset`)
+- Ledger **`CanActAs`** rights established so the party can submit commands
+
+```mermaid
+flowchart TD
+    A[Keycloak identity] --> B[Ledger user / CanActAs]
+    B --> C[colin-agent party]
+    C --> D[Transfer preapproval]
+    D --> E[10 CC / Amulet]
+    E --> F[Agent Mandate]
+```
+
+Authorisation (the Daml mandate) and settlement (the Canton Coin transfer) are
+currently **separate steps, not one atomic transaction** — we do not claim atomic
+authorisation + settlement. Full engineering record, coordinates, and debugging
+notes: **[docs/devnet/](docs/devnet/README.md)**.
+
 ## Run it
 
 Daml:
