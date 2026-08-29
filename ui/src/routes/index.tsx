@@ -29,11 +29,14 @@ function Index() {
         <header className="border-b border-border pb-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
+              <p className="label-xs mb-1">
+                AIGENT<span className="text-primary">.</span>FARM demo
+              </p>
               <h1 className="font-mono text-3xl font-semibold tracking-tight md:text-4xl">
-                AIGENT<span className="text-primary">.</span>FARM
+                CANTON AGENT MANDATE
               </h1>
               <p className="mt-2 max-w-xl text-sm text-muted-foreground md:text-base">
-                Private farm capital. Bounded AI authority. Enforced by Canton.
+                Ledger-enforced financial authority for AI agents
               </p>
             </div>
             <div className="flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-1.5">
