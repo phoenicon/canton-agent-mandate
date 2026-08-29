@@ -217,4 +217,12 @@ python3 adapter/doctor.py
 
 ---
 
+## License
+
+**Proprietary — © 2026 Colin Porter. All rights reserved.** No license is
+granted; the repository is shared for hackathon evaluation only. See
+[LICENSE](LICENSE).
+
+---
+
 *AIGENT.FARM: capital has rules. Agents have rules. Canton enforces both.*

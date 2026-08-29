@@ -1,0 +1,31 @@
+Copyright © 2026 Colin Porter. All rights reserved.
+
+Canton Agent Mandate and its accompanying materials (the "Work") — including the
+Daml contracts, the Python adapters and scripts, the frontend application, and
+all documentation, presentation decks, and images in this repository — are the
+proprietary work of Colin Porter.
+
+NO LICENSE IS GRANTED. You may not use, copy, reproduce, modify, adapt, publish,
+distribute, sublicense, sell, or create derivative works from the Work, in whole
+or in part, by any means, without the prior written permission of the copyright
+holder.
+
+This repository is made visible for the sole purpose of evaluation and review in
+connection with the Cantor8 BuildOnCanton hackathon. Visibility of the source
+does not grant any license, right, or transfer of ownership, and does not place
+the Work in the public domain.
+
+THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER
+BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE
+WORK OR THE USE OF THE WORK.
+
+Third-party components: this repository incorporates third-party open-source
+components (for example UI primitives, libraries, and toolchain configuration)
+that remain the property of their respective authors and are governed by their
+own licenses. This notice does not modify those licenses and does not claim
+ownership of those components.
+
+For licensing enquiries, contact the copyright holder.
