@@ -1,0 +1,80 @@
+-- Adversarial proofs. Each script is an attack; `submitMustFail` asserts the
+-- ledger REJECTS it. If any attack ever succeeded, that script would fail, and
+-- `daml test` would go red. These harden the authority boundaries that the
+-- happy-path story in Test.daml does not exercise on its own.
+--
+-- Nothing here needs a network: `daml test` runs it all in-memory.
+module Adversarial where
+
+import DA.Time (addRelTime, hours)
+import Daml.Script
+import Mandate
+
+-- A standard live mandate to attack: Alice owns, Agent spends, cap 100, the
+-- only allow-listed counterparty is ShopA. Scammer is deliberately excluded.
+setup : Script (Party, Party, Party, Party, ContractId Mandate)
+setup = script do
+  alice <- allocateParty "Alice"
+  agent <- allocateParty "Agent"
+  shopA <- allocateParty "ShopA"
+  scam  <- allocateParty "Scammer"
+  now <- getTime
+  prop <- submit alice do
+    createCmd MandateProposal with
+      owner = alice; agent; cap = 100.0
+      allowed = [shopA]; expiresAt = addRelTime now (hours 24)
+  m <- submit agent do exerciseCmd prop Accept
+  pure (alice, agent, shopA, scam, m)
+
+-- The agent cannot revoke its own mandate: Revoke is `controller owner`.
+-- (The mirror of "owner can always revoke" — the agent cannot self-serve here.)
+agentCannotRevoke : Script ()
+agentCannotRevoke = script do
+  (_, agent, _, _, m) <- setup
+  submitMustFail agent do exerciseCmd m Revoke
+
+-- A third party, neither owner nor agent, cannot spend the mandate at all.
+strangerCannotCharge : Script ()
+strangerCannotCharge = script do
+  (_, _, shopA, _, m) <- setup
+  mallory <- allocateParty "Mallory"
+  submitMustFail mallory do
+    exerciseCmd m Charge with payTo = shopA; amount = 1.0; memo = "not mine"
+
+-- The owner cannot spend through the agent's Charge choice: `controller agent`
+-- means only the agent drives spending, even the funding owner cannot.
+ownerCannotCharge : Script ()
+ownerCannotCharge = script do
+  (alice, _, shopA, _, m) <- setup
+  submitMustFail alice do
+    exerciseCmd m Charge with payTo = shopA; amount = 1.0; memo = "owner self-charge"
+
+-- An empty allow-list blocks every counterparty, even well under the cap.
+emptyAllowListBlocksAll : Script ()
+emptyAllowListBlocksAll = script do
+  alice <- allocateParty "Alice"
+  agent <- allocateParty "Agent"
+  shopA <- allocateParty "ShopA"
+  now <- getTime
+  prop <- submit alice do
+    createCmd MandateProposal with
+      owner = alice; agent; cap = 100.0
+      allowed = []; expiresAt = addRelTime now (hours 24)
+  m <- submit agent do exerciseCmd prop Accept
+  submitMustFail agent do
+    exerciseCmd m Charge with payTo = shopA; amount = 1.0; memo = "no allow-list"
+
+-- Raising the cap does NOT widen the allow-list. Even after both parties agree
+-- a huge new cap, a disallowed counterparty stays blocked, while an allow-listed
+-- one can still be paid. The two limits are independent.
+adjustDoesNotWidenAllowList : Script ()
+adjustDoesNotWidenAllowList = script do
+  (alice, agent, shopA, scam, m) <- setup
+  m <- submitMulti [alice, agent] [] do exerciseCmd m Adjust with newCap = 1000.0
+  -- Scammer is still not payable, despite the far larger cap.
+  submitMustFail agent do
+    exerciseCmd m Charge with payTo = scam; amount = 5.0; memo = "still blocked"
+  -- The allow-listed shop can still be paid, now up to the raised cap.
+  _ <- submit agent do
+    exerciseCmd m Charge with payTo = shopA; amount = 500.0; memo = "allowed"
+  pure ()
