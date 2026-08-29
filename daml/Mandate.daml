@@ -1,0 +1,119 @@
+-- D1: A spend-limited wallet for an AI agent.
+--
+-- An owner grants an AI agent a mandate: it may spend up to a total cap, only
+-- with an allow-listed set of counterparties, until an expiry, and the owner
+-- can revoke at any instant without the agent's cooperation.
+--
+-- The whole point of the task: EVERY limit is enforced here, in Daml, in the
+-- choice body. A limit checked in a Python backend is a suggestion, because
+-- anyone who can reach the ledger bypasses it. A limit in a choice body is a
+-- rule the network enforces. Each enforced line is marked  -- [ENFORCED] below.
+module Mandate where
+
+-- The mandate itself. Both parties are signatories, so it cannot be created
+-- without the owner consenting to fund it, nor the agent consenting to be bound.
+template Mandate
+  with
+    owner    : Party        -- who is paying
+    agent    : Party        -- the AI agent doing the spending
+    cap      : Decimal      -- total the agent may spend over the mandate's life
+    spent    : Decimal      -- how much has been spent so far
+    allowed  : [Party]      -- the only counterparties the agent may pay
+    expiresAt : Time        -- after this instant, no charge is permitted
+  where
+    ensure cap > 0.0 && spent >= 0.0 && spent <= cap
+
+    signatory owner, agent
+
+    -- The agent spends within the mandate. No owner signature needed at spend
+    -- time — that is the point of a mandate. Every guard here is on-ledger.
+    -- Returns the successor Mandate plus a ChargeReceipt: the audit record.
+    nonconsuming choice Charge : (ContractId Mandate, ContractId ChargeReceipt)
+      with
+        payTo  : Party      -- the counterparty being paid
+        amount : Decimal    -- how much
+        memo   : Text       -- why the agent says it is spending
+      controller agent
+      do
+        now <- getTime
+        -- [ENFORCED] expiry: `expiresAt` is just a field; nothing checks it for us.
+        assertMsg "mandate expired" (now < expiresAt)
+        -- [ENFORCED] amount sanity.
+        assertMsg "amount must be positive" (amount > 0.0)
+        -- [ENFORCED] total spend cap.
+        assertMsg "charge would exceed the cap" (spent + amount <= cap)
+        -- [ENFORCED] counterparty allow-list.
+        assertMsg "counterparty is not on the allow-list" (payTo `elem` allowed)
+
+        -- Consuming choice would archive the mandate; this is nonconsuming, so
+        -- we archive the old state and create the successor explicitly. This
+        -- keeps a clean create/archive chain the audit trail can follow.
+        archive self
+        newMandate <- create this with spent = spent + amount
+
+        -- The human-readable audit record. One contract per charge, stating the
+        -- amount, the counterparty, and which mandate authorised it.
+        receipt <- create ChargeReceipt with
+          owner; agent; payTo; amount; memo
+          spentAfter = spent + amount
+          capAtCharge = cap
+          chargedAt = now
+          authorisedBy = "Mandate: within cap and counterparty on allow-list"
+
+        pure (newMandate, receipt)
+
+    -- The owner can always stop it, instantly, and the agent cannot block or
+    -- delay this: the agent is not a controller of Revoke. Consuming, so the
+    -- mandate is archived the moment this runs.
+    choice Revoke : ()
+      controller owner
+      do pure ()
+
+    -- Changing the cap needs BOTH parties, because both are signatories. The
+    -- agent cannot raise its own limit.
+    choice Adjust : ContractId Mandate
+      with newCap : Decimal
+      controller owner, agent
+      do
+        assertMsg "new cap below what is already spent" (newCap >= spent)
+        create this with cap = newCap
+
+
+-- Immutable audit record of a single charge. Signed by both parties so neither
+-- can forge or repudiate it. The statement the owner reads after the fact.
+template ChargeReceipt
+  with
+    owner        : Party
+    agent        : Party
+    payTo        : Party
+    amount       : Decimal
+    memo         : Text     -- the agent's stated reason
+    spentAfter   : Decimal  -- cumulative spend once this charge landed
+    capAtCharge  : Decimal  -- the cap in force at the time
+    chargedAt    : Time
+    authorisedBy : Text     -- which permission allowed it, in words
+  where
+    signatory owner, agent
+
+
+-- Propose and accept: the owner offers a mandate, the agent takes it up. You
+-- cannot force a two-signatory contract onto the agent, so the owner proposes
+-- and the agent accepts, creating the Mandate.
+template MandateProposal
+  with
+    owner    : Party
+    agent    : Party
+    cap      : Decimal
+    allowed  : [Party]
+    expiresAt : Time
+  where
+    signatory owner
+    observer agent
+
+    choice Accept : ContractId Mandate
+      controller agent
+      do create Mandate with owner; agent; cap; spent = 0.0; allowed; expiresAt
+
+    choice Reject : ()
+      controller agent
+      do pure ()

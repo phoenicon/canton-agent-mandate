@@ -1,0 +1,82 @@
+-- Run with: daml test
+--
+-- These tests are the submission's proof. `submit` asserts something is
+-- ACCEPTED by the ledger; `submitMustFail` asserts it is REJECTED. Every
+-- rejection below is the ledger enforcing a rule, not a backend check.
+module Test where
+
+import DA.Time (addRelTime, hours)
+import Daml.Script
+import Mandate
+
+-- The four required proofs plus the surrounding happy path, in one story.
+testMandate : Script ()
+testMandate = script do
+  alice  <- allocateParty "Alice"     -- the owner
+  agent  <- allocateParty "Agent"     -- the AI agent
+  shopA  <- allocateParty "ShopA"     -- allow-listed counterparty
+  shopB  <- allocateParty "ShopB"     -- allow-listed counterparty
+  scam   <- allocateParty "Scammer"   -- NOT on the allow-list
+
+  now <- getTime
+  let deadline = addRelTime now (hours 24)
+
+  -- Owner proposes a mandate; agent accepts. Cap 100, may only pay ShopA/ShopB.
+  prop <- submit alice do
+    createCmd MandateProposal with
+      owner = alice; agent; cap = 100.0
+      allowed = [shopA, shopB]; expiresAt = deadline
+  m <- submit agent do exerciseCmd prop Accept
+
+  -- REQUIREMENT: a valid charge under the cap, to an allowed party, SUCCEEDS.
+  (m, _) <- submit agent do
+    exerciseCmd m Charge with payTo = shopA; amount = 30.0; memo = "API credits"
+  (m, _) <- submit agent do
+    exerciseCmd m Charge with payTo = shopB; amount = 50.0; memo = "compute"
+
+  -- REQUIREMENT: a charge over the remaining cap FAILS (80 spent, 40 more > 100).
+  submitMustFail agent do
+    exerciseCmd m Charge with payTo = shopA; amount = 40.0; memo = "too much"
+
+  -- REQUIREMENT: a charge to a disallowed counterparty FAILS, even under cap.
+  submitMustFail agent do
+    exerciseCmd m Charge with payTo = scam; amount = 5.0; memo = "phishing"
+
+  -- The agent cannot raise its own cap alone (needs both signatories).
+  submitMustFail agent do exerciseCmd m Adjust with newCap = 500.0
+
+  -- Owner revokes. Instantly. The agent is not a controller and cannot block it.
+  submit alice do exerciseCmd m Revoke
+
+  -- REQUIREMENT: a charge after revocation FAILS — the mandate no longer exists.
+  submitMustFail agent do
+    exerciseCmd m Charge with payTo = shopA; amount = 1.0; memo = "after revoke"
+
+  pure ()
+
+-- Expiry is enforced on-ledger too: once past expiresAt, no charge is allowed.
+testExpiry : Script ()
+testExpiry = script do
+  alice <- allocateParty "Alice"
+  agent <- allocateParty "Agent"
+  shop  <- allocateParty "Shop"
+
+  now <- getTime
+  let deadline = addRelTime now (hours 1)
+
+  prop <- submit alice do
+    createCmd MandateProposal with
+      owner = alice; agent; cap = 100.0
+      allowed = [shop]; expiresAt = deadline
+  m <- submit agent do exerciseCmd prop Accept
+
+  -- Before expiry: fine.
+  (m, _) <- submit agent do
+    exerciseCmd m Charge with payTo = shop; amount = 10.0; memo = "in time"
+
+  -- Advance past the deadline, then the same charge is rejected on the ledger.
+  passTime (hours 2)
+  submitMustFail agent do
+    exerciseCmd m Charge with payTo = shop; amount = 10.0; memo = "too late"
+
+  pure ()
