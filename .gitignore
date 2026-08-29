@@ -1,4 +1,9 @@
 .daml/
 .env
+.env.*
+!.env.example
+.DS_Store
+*.zip
+.canton-live-transfer.json
 __pycache__/
 *.pyc
