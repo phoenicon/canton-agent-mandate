@@ -13,9 +13,15 @@ compromised.
 under a mandate, and a Farm SPV issuing private capital. The submission itself is
 the **Agent Mandate** — bounded, on-ledger financial authority.
 
+![Canton Agent Mandate — summary](docs/images/hero-summary.png)
+
 ## What we built
 
+![How it works — Agent Mandate and FarmNote workflow](docs/images/simple-workflow.png)
+
 ### 1. Agent Mandate — the primary challenge implementation
+
+![Live demo — bounded agent spending](docs/images/ui-demo.png)
 
 A farm owner delegates limited financial authority to an AI agent. The mandate
 enforces in Daml:
@@ -90,6 +96,8 @@ daml/Test.daml:testExpiry: ok
 ```
 
 If one of those prohibited actions succeeds, the test suite goes red.
+
+<!-- TODO: embed docs/images/daml-tests.png here (screenshot of the passing `daml test` run) -->
 
 ## Receipt and audit trail
 
