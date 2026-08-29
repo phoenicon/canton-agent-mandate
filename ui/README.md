@@ -1,29 +1,22 @@
-# Welcome to your Lovable project
+# AIGENT.FARM frontend
 
-This project was built with [Lovable](https://lovable.dev).
+Visualises the Daml workflows (Agent Mandate + FarmNote). Mock state lives in
+`src/lib/demo-data.ts`. This UI does **not** claim live FarmNote settlement.
 
-## Build with Lovable
+## Run
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+```bash
+npm install
+npm run dev      # local dev server
+npm run build    # production build (Vite + Nitro)
 ```
 
-## Built with
+Node 20 / 22 / 24 recommended. Authored with Bun (`bun.lock` kept); `npm` works
+and is what the build is verified with.
 
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
+## Stack
+
+TanStack Start · React 19 · TypeScript · Tailwind 4
+
+See the [root README](../README.md) for the project story and
+[ARCHITECTURE.md](../ARCHITECTURE.md) for how the UI relates to the Daml layer.

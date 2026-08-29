@@ -1,60 +1,89 @@
-# AIGENT.FARM — Private farm capital + bounded AI authority on Canton
+# AIGENT.FARM
 
-AIGENT.FARM uses Daml to enforce private farm investment workflows and strictly
-bounded financial authority for autonomous agents.
+**Private farm capital. Bounded AI authority. Enforced by Canton.**
 
-## Why Canton
+We built two Daml workflows around one idea: financial authority should be
+explicit, private, and enforceable **below the AI model**.
 
-- **Ledger-enforced authority** — spending limits are rules in the contract, not
-  checks in a backend, so they hold even against a party talking to the ledger
-  directly.
-- **Per-party privacy** — visibility is a stakeholder property of each contract,
-  proven from independent per-party ledger views.
-- **Multi-party financial workflows** — propose/accept, revocation, and
-  regulator observation are native.
-- **Programmable ownership and control** — who may do what is encoded and tested.
+- An AI farm agent can spend only within a ledger-enforced mandate.
+- A Farm SPV can issue a private FarmNote visible only to the parties who should
+  see it.
 
-## Two demo primitives
+> **The model can be compromised. The mandate still holds.**
 
-**Agent Mandate** — a farm owner delegates bounded financial authority to an AI
-agent: `cap` · `allow-list` · `expiry` · owner `revocation`, and proven attack
-resistance. The AI decides what it wants to do; Canton decides what it is allowed
-to do.
+## What we built
 
-**FarmNote** — a Farm SPV privately offers a note to a named investor:
-`FarmNoteOffer → Accept → FarmNoteHolding`. Issuer and investor see it, the
-regulator observes read-only, and an outsider has no contract visibility at all.
+### 1. Bounded Farm Operations — Agent Mandate
+
+A farm owner delegates limited financial authority to an AI agent. The mandate
+enforces in Daml:
+
+- £500 total spend cap
+- approved counterparties
+- expiry
+- owner revocation
+- immutable receipts for authorised charges
+
+Attack attempts are rejected on-ledger:
+
+```
+Allowed payment           PASS
+Overspend attack          BLOCKED
+Wrong counterparty        BLOCKED
+Post-revocation payment   BLOCKED
+```
+
+**AI decides what it wants to do. Canton decides what it is allowed to do.**
+
+### 2. Private Farm Capital — FarmNote
+
+A Farm SPV privately offers a FarmNote to a named investor.
+
+```
+Farm SPV      issuer / signatory
+Investor      stakeholder / can accept
+Regulator     observer / read-only
+Outsider      no authorised view
+```
+
+The privacy boundary is tested with independent per-party `queryContractId`
+calls — not inferred from the UI.
+
+## Why the two pieces belong together
+
+Capital authority and operational authority are different. Canton lets us enforce
+both separately.
+
+An investor may commit £1.2m to the farm. **The AI agent still cannot spend £501
+without permission.**
 
 ## Evidence
 
-**12 / 12 Daml scripts green.** The tests are the submission:
+**12 / 12 Daml scripts green**
 
-- **Mandate authority** — over-cap rejected · disallowed counterparty rejected ·
-  post-revocation rejected · agent cannot revoke · stranger cannot charge · owner
-  cannot misuse the agent-only `Charge` · empty allow-list blocks spending · a
-  cap adjustment does not widen the allow-list.
-- **FarmNote privacy** — correct investor can accept · wrong investor rejected ·
-  issuer/investor/regulator visibility confirmed · outsider non-visibility, all
-  via independent per-party `queryContractId` · outsider cannot exercise any
-  FarmNote choice.
+- under-cap charge succeeds
+- over-cap charge rejected
+- disallowed counterparty rejected
+- post-revocation charge rejected
+- agent cannot revoke its own mandate
+- stranger cannot charge
+- empty allow-list blocks spending
+- correct FarmNote investor can accept
+- wrong investor rejected
+- issuer / investor / regulator visibility confirmed
+- outsider sees no FarmNote contract
+- outsider cannot exercise FarmNote choices
 
-## Run
+## Run it
 
-Daml (in-memory, ~1s, no network):
+Daml:
 
 ```bash
 daml build
 daml test
 ```
 
-DevNet preflight (see [DEVNET.md](DEVNET.md)):
-
-```bash
-source .env
-python3 adapter/doctor.py
-```
-
-UI (dev server):
+UI:
 
 ```bash
 cd ui
@@ -62,27 +91,58 @@ npm install
 npm run dev
 ```
 
-UI (production build):
+Cantor8 DevNet:
 
 ```bash
-npm run build
+source .env
+python3 adapter/doctor.py
 ```
 
-## DevNet
+See **[DEVNET.md](DEVNET.md)** for the network / party / permission model,
+**[DEMO.md](DEMO.md)** for the 60–90 second judge walkthrough, and
+**[ARCHITECTURE.md](ARCHITECTURE.md)** for the two control planes and the
+identity chain.
 
-Cantor8 DevNet connectivity, party model, and the honest boundary are documented
-in [DEVNET.md](DEVNET.md).
+## Architecture
 
-## Honest boundary
+```
+                    AIGENT.FARM
+                         │
+           ┌─────────────┴─────────────┐
+           │                           │
+    FARM OPERATIONS              FARM CAPITAL
+           │                           │
+      Agent Mandate                 FarmNote
+           │                           │
+  cap / allow-list /          issuer / investor /
+  expiry / revocation         regulator / outsider
+           │                           │
+           └─────────────┬─────────────┘
+                         │
+                 CANTON / DAML
+            authority + privacy rules
+```
 
-- The **UI visualises** the workflows; its demo state is isolated in
-  `ui/src/lib/demo-data.ts`.
-- The **Daml rules and privacy are implemented and tested** (12/12 green).
-- **DevNet connectivity is working** — Keycloak auth, registry, reachable Ledger
-  API, ledger end advancing.
-- **FarmNote cash settlement is not currently claimed.**
-- **Atomic Canton Coin settlement is not currently claimed.**
-- **Token Standard integration is a separate next layer.**
+## What is real today
+
+**Implemented and tested**
+
+- Agent Mandate contract
+- FarmNote contract
+- adversarial authority tests
+- per-party privacy tests
+- Cantor8 DevNet authentication and Ledger API connectivity
+- working frontend visualisation
+
+**Not claimed**
+
+- FarmNote cash settlement
+- atomic mandate authorisation + Canton Coin settlement
+- live Token Standard settlement for the FarmNote
+- fake transaction hashes or fake ledger state
+
+The UI is a visualisation layer. The Daml rules and privacy tests are the source
+of truth.
 
 ---
 
