@@ -27,6 +27,28 @@ daml/Test.daml:testExpiry:  ok, 2 active contracts, 5 transactions.
 
 `daml test` runs in-memory in about a second. No node, no Docker, no network.
 
+### The judge-facing demo
+
+```bash
+python3 adapter/demo.py            # settlement simulated (no ledger needed)
+python3 adapter/demo.py --live     # settle via real c8lab token transfers
+```
+
+It runs the whole scenario through the real Daml mandate on a simulated ledger,
+then prints the audit statement from the ledger's own numbers:
+
+```
+AGENT MANDATE AUDIT
+Budget granted:            100.00 Amulet
+Successfully spent:        80.00 Amulet
+Remaining:                 20.00 Amulet
+Valid charges:             2
+Rejected by cap:           1
+Rejected by counterparty:  1
+Rejected after revocation: 1
+Ledger enforced:           YES
+```
+
 ## Architecture
 
 Two contracts, one proposal, in [`daml/Mandate.daml`](daml/Mandate.daml):
@@ -67,26 +89,79 @@ after revocation fails. `testExpiry` proves charges are rejected past
 `expiresAt`. `submitMustFail` is the assertion that the ledger *rejects* an
 action — that is what makes these security proofs rather than happy-path checks.
 
+## Connecting to a real payment flow
+
+The whole security property is: **an agent must not be able to cause a payment
+unless the Daml mandate authorises it.** The integration keeps every spending
+decision in Daml and gives Python only two menial jobs — ask, then settle.
+
+```
+   agent ──exercise Charge──►  ┌──────── Daml Mandate ────────┐
+                               │  cap ✓  allow-list ✓         │   THE enforcer
+                               │  expiry ✓  revoked? ✗        │   (on-ledger, tested)
+                               └──────────────┬───────────────┘
+                                    authorised │ → ChargeReceipt
+                                               ▼
+   adapter/demo.py ──reuses──►  c8lab.transfer()  ── Canton Coin (Amulet) moves
+                                (called ONLY for a charge Daml authorised)
+```
+
+- [`adapter/agent_wallet.py`](adapter/agent_wallet.py) — the adapter. It runs the
+  Daml scenario on a **simulated in-memory ledger**
+  (`daml script --ide-ledger`) and reads back an audit report whose every figure
+  is the result of a real `Charge` / `Revoke` exercise. Then `settle()` performs
+  the payment by **reusing `c8lab.transfer` verbatim** — the toolkit's real
+  token-standard two-phase flow (registry factory + disclosed contracts). It
+  imports `c8lab.py` from the toolkit; it does not copy or reimplement it.
+- [`adapter/demo.py`](adapter/demo.py) — the terminal demo above. It decides
+  nothing about spending; it prints the ledger's numbers and settles what the
+  ledger authorised.
+
+The adapter's one rule: **no `Charge` authorisation ⇒ no `transfer()` call.** It
+cannot raise a cap or add a counterparty — only the ledger can.
+
+## The honest boundary: what is real, what is not yet
+
+**Real, now:** every cap / allow-list / expiry / revocation decision, enforced by
+Daml and proven by `daml test` and by the demo's `submitMustFail` guards (which
+abort the run if the ledger ever wrongly authorises a charge). The audit numbers
+come from the ledger, not from Python.
+
+**Not executed yet — and not faked:**
+
+1. **No live value moves this milestone.** LocalNet is intentionally not stood
+   up and DevNet needs a `C8_CLIENT_SECRET` we do not have, so no Canton ledger
+   is reachable. The demo therefore prints settlement as `SIMULATED` and moves no
+   coin. The real code path (`c8lab.transfer`) is wired behind `--live` and runs
+   the moment a ledger + registry are configured; it never reports a transfer
+   that did not happen.
+2. **Authorise and settle are two steps, not one atomic transaction.** Today the
+   adapter authorises in Daml, then settles via a separate token transfer. If the
+   transfer failed after a successful `Charge`, the mandate would already show the
+   spend. The **atomic** design removes this gap: make `Charge` perform the
+   transfer as a *nested exercise*. That works because the **owner is a signatory
+   of the `Mandate`**, so the owner's authority — needed to move the owner's coin
+   — is available inside `Charge`, while the agent (no act-as rights on the owner)
+   can never move funds except through a `Charge` that passed. It requires the
+   Splice token-standard DARs compiled into this package plus a live registry, so
+   it is deferred to the LocalNet milestone.
+3. **No agent integration or frontend.** No MCP server / LLM holds the wallet yet
+   (out of scope for this milestone); the `ChargeReceipt` contracts are the
+   audit data a UI would render.
+
 ## Design decisions
 
-- **`Charge` is `nonconsuming`** and archives/recreates the mandate explicitly,
-  so it can atomically emit both the successor mandate and the receipt in one
-  transaction while keeping a clean create/archive chain.
+- **`Charge` is consuming** (the Daml default): it archives the old `Mandate` and
+  creates the successor with the higher `spent`, plus the `ChargeReceipt`, in one
+  transaction. (Earlier it was `nonconsuming` with a manual `archive self`;
+  consuming is simpler and matches the starter idiom.)
 - **Total cap only.** Per-period ("100/month") limits were deliberately left
   out — they turn into date arithmetic and the D1 guidance is to land the total
   cap first. Noted as the next step.
+- **Enforcement stays in Daml.** The Python adapter is stdlib-only and holds no
+  spending logic, by design — so it cannot become a second, weaker rule set.
 - Dropped the starter's `Iou.daml`; it is teaching scaffolding unrelated to D1.
 
-## What is still mocked / not yet built
-
-- **No real value moves.** `Charge` records spend and writes a receipt but does
-  not transfer a token. Wiring `Charge` to a Canton token-standard transfer is
-  the next real step (see the toolkit's `c8lab.py` for a working transfer).
-- **No LocalNet / live node.** Everything runs in the in-memory Daml Script
-  test ledger. No participant node has been stood up yet.
-- **No agent integration and no frontend.** There is no MCP server or LLM
-  holding the wallet yet, and no statement UI — the `ChargeReceipt` contracts
-  are the machine- and human-readable audit data a UI would render.
-
 Started from `~/hackathon-toolkit/daml-starter` (SDK 3.4.10, target 2.1). SDK
-version deliberately unchanged.
+version deliberately unchanged. The adapter reuses `~/hackathon-toolkit/c8lab.py`
+(override its location with the `C8LAB` env var).

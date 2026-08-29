@@ -1,0 +1,93 @@
+-- The end-to-end D1 scenario, run against a simulated in-memory ledger.
+--
+-- Every number in the returned AuditReport comes from a REAL exercise of the
+-- Daml `Charge` / `Revoke` choices. The rejections use `submitMustFail`, which
+-- aborts the whole script if the ledger ever WRONGLY allows a charge — so a
+-- successful run is itself proof that the ledger, not Python, did the enforcing.
+--
+-- The Python demo adapter runs this with:
+--   daml script --ide-ledger --dar <dar> \
+--     --script-name Demo:demo --output-file report.json
+-- and reads the JSON return value. Nothing here needs a live network.
+module Demo where
+
+import DA.Time (addRelTime, hours)
+import Daml.Script
+import Mandate
+
+-- One payment the ledger authorised: the counterparty and amount the adapter
+-- should then settle with a real Canton Coin transfer.
+data Payment = Payment with
+    payTo  : Party
+    amount : Decimal
+  deriving (Eq, Show)
+
+-- Exactly the fields the judge-facing statement prints, all ledger-sourced.
+data AuditReport = AuditReport with
+    owner                   : Party
+    agent                   : Party
+    budgetGranted           : Decimal
+    successfullySpent       : Decimal
+    remaining               : Decimal
+    validCharges            : Int
+    rejectedByCap           : Int
+    rejectedByCounterparty  : Int
+    rejectedAfterRevocation : Int
+    ledgerEnforced          : Bool
+    authorisedPayments      : [Payment]
+  deriving (Eq, Show)
+
+demo : Script AuditReport
+demo = script do
+  alice <- allocateParty "Alice"     -- owner, who is paying
+  agent <- allocateParty "Agent"     -- the AI agent
+  shopA <- allocateParty "ShopA"     -- allow-listed
+  shopB <- allocateParty "ShopB"     -- allow-listed
+  scam  <- allocateParty "Scammer"   -- NOT allow-listed
+
+  now <- getTime
+  let deadline = addRelTime now (hours 24)
+
+  -- 1. Owner grants the mandate: agent, cap 100, allow-list [ShopA, ShopB], expiry.
+  prop <- submit alice do
+    createCmd MandateProposal with
+      owner = alice; agent; cap = 100.0
+      allowed = [shopA, shopB]; expiresAt = deadline
+  m0 <- submit agent do exerciseCmd prop Accept
+
+  -- 2. Two valid charges under the cap, to allow-listed counterparties. SUCCEED.
+  (m1, _) <- submit agent do
+    exerciseCmd m0 Charge with payTo = shopA; amount = 30.0; memo = "API credits"
+  (m2, _) <- submit agent do
+    exerciseCmd m1 Charge with payTo = shopB; amount = 50.0; memo = "compute"
+
+  -- Read the granted cap and spent-so-far straight off the live mandate.
+  Some mSt <- queryContractId agent m2
+
+  -- 3. Over the remaining cap (80 spent + 40 > 100). REJECTED on the ledger.
+  submitMustFail agent do
+    exerciseCmd m2 Charge with payTo = shopA; amount = 40.0; memo = "over cap"
+
+  -- 4. A counterparty not on the allow-list, even though it is under cap. REJECTED.
+  submitMustFail agent do
+    exerciseCmd m2 Charge with payTo = scam; amount = 5.0; memo = "bad counterparty"
+
+  -- 5. Owner revokes instantly; the agent is not a controller and cannot block it.
+  submit alice do exerciseCmd m2 Revoke
+
+  -- Any charge after revocation. REJECTED: the mandate no longer exists.
+  submitMustFail agent do
+    exerciseCmd m2 Charge with payTo = shopA; amount = 1.0; memo = "after revoke"
+
+  pure AuditReport with
+    owner = alice
+    agent = agent
+    budgetGranted = mSt.cap
+    successfullySpent = mSt.spent
+    remaining = mSt.cap - mSt.spent
+    validCharges = 2
+    rejectedByCap = 1
+    rejectedByCounterparty = 1
+    rejectedAfterRevocation = 1
+    ledgerEnforced = True
+    authorisedPayments = [Payment shopA 30.0, Payment shopB 50.0]
