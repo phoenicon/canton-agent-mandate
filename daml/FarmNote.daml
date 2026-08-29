@@ -1,0 +1,57 @@
+-- Minimal FarmNote: the smallest issuer -> investor primary-issuance workflow.
+--
+-- An issuer offers a farm note (units of a farm at a unit price); the intended
+-- investor accepts, which consumes the offer and creates a holding recording who
+-- owns how many units of which farm, at what price.
+--
+-- Deliberately self-contained: no Canton Coin, no token standard, no Splice
+-- DARs. There is NO cash leg here — accepting records the holding only; nothing
+-- is paid. That is intentional for this milestone.
+module FarmNote where
+
+-- The issuer's offer to a specific investor. The issuer alone signs it; the
+-- named investor is the only party who can accept.
+template FarmNoteOffer
+  with
+    issuer    : Party
+    investor  : Party
+    farmId    : Text
+    units     : Decimal
+    unitPrice : Decimal
+  where
+    ensure units > 0.0 && unitPrice > 0.0
+
+    signatory issuer
+    observer investor
+
+    -- Only the intended investor may accept. Consuming: the offer is archived
+    -- and the holding is created in the same transaction.
+    choice Accept : ContractId FarmNoteHolding
+      controller investor
+      do
+        create FarmNoteHolding with
+          issuer; owner = investor; farmId; units; unitPrice
+
+    -- Either side can walk away from an unaccepted offer.
+    choice Decline : ()
+      controller investor
+      do pure ()
+
+    choice Withdraw : ()
+      controller issuer
+      do pure ()
+
+
+-- The record of ownership created once an offer is accepted. Signed by both, so
+-- neither the issuer nor the owner can forge or repudiate it.
+template FarmNoteHolding
+  with
+    issuer    : Party
+    owner     : Party
+    farmId    : Text
+    units     : Decimal
+    unitPrice : Decimal
+  where
+    ensure units > 0.0 && unitPrice > 0.0
+
+    signatory issuer, owner

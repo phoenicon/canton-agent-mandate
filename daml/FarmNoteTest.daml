@@ -1,0 +1,49 @@
+-- Tests for the minimal FarmNote workflow. `daml test` runs these in-memory.
+module FarmNoteTest where
+
+import DA.Assert ((===))
+import Daml.Script
+import FarmNote
+
+-- Happy path: issuer offers, the intended investor accepts, and the resulting
+-- holding records exactly what was offered.
+testFarmNoteAccept : Script ()
+testFarmNoteAccept = script do
+  issuer   <- allocateParty "Issuer"
+  investor <- allocateParty "Investor"
+
+  -- Issuer creates the offer.
+  offer <- submit issuer do
+    createCmd FarmNoteOffer with
+      issuer; investor
+      farmId = "FARM-001"; units = 100.0; unitPrice = 25.0
+
+  -- The intended investor accepts; this consumes the offer and creates a holding.
+  holdingCid <- submit investor do exerciseCmd offer Accept
+
+  -- The holding records issuer, owner, farmId, units, unitPrice as offered.
+  Some h <- queryContractId investor holdingCid
+  h.issuer    === issuer
+  h.owner     === investor
+  h.farmId    === "FARM-001"
+  h.units     === 100.0
+  h.unitPrice === 25.0
+
+  pure ()
+
+-- Adversarial: a party who is not the intended investor cannot accept the offer.
+testWrongInvestorCannotAccept : Script ()
+testWrongInvestorCannotAccept = script do
+  issuer   <- allocateParty "Issuer"
+  investor <- allocateParty "Investor"
+  intruder <- allocateParty "Intruder"
+
+  offer <- submit issuer do
+    createCmd FarmNoteOffer with
+      issuer; investor
+      farmId = "FARM-001"; units = 100.0; unitPrice = 25.0
+
+  -- The intruder is not the controller of Accept, so the ledger rejects it.
+  submitMustFail intruder do exerciseCmd offer Accept
+
+  pure ()
