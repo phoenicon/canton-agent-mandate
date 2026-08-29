@@ -98,6 +98,7 @@ export type AttemptResult = {
   reason: string;
   detail: string;
   rule: string;
+  balance?: string;
 };
 
 export const paymentAttempts: AttemptResult[] = [
@@ -109,8 +110,9 @@ export const paymentAttempts: AttemptResult[] = [
     outcome: "permitted",
     headline: "PERMITTED BY MANDATE",
     reason: "within cap + approved counterparty",
-    detail: "Within £500 cap, counterparty on allow-list, mandate active.",
+    detail: "Within £500 total cap, counterparty on allow-list, mandate active.",
     rule: "AgentMandate.SpendWithinCap",
+    balance: "Spent £240 / Remaining £260",
   },
   {
     id: "cap",
@@ -120,7 +122,7 @@ export const paymentAttempts: AttemptResult[] = [
     outcome: "rejected",
     headline: "REJECTED BY CONTRACT RULE",
     reason: "exceeds £500 cap",
-    detail: "£900 exceeds the mandate maximum transaction of £500.",
+    detail: "£900 exceeds the £500 total mandate cap.",
     rule: "ensure amount <= cap",
   },
   {

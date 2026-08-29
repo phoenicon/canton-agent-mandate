@@ -27,7 +27,7 @@ export function AgentMandate() {
 
         <Field k="Owner" v={mandate.owner} />
         <Field k="Agent" v={mandate.agent} />
-        <Field k="Maximum transaction" v={mandate.cap} mono />
+        <Field k="Total spend cap" v={mandate.cap} mono />
         <Field k="Approved supplier" v={mandate.approvedCounterparties.join(", ")} />
         <Field k="Expiry" v={mandate.expiry} mono />
         <Field
@@ -126,6 +126,11 @@ export function AgentMandate() {
                     {r.reason}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">{r.detail}</p>
+                  {r.balance && r.outcome === "permitted" && (
+                    <p className="mt-1 font-mono text-xs text-success">
+                      {r.balance}
+                    </p>
+                  )}
                   <p className="mt-1 font-mono text-[0.7rem] text-muted-foreground/80">
                     {r.rule}
                   </p>

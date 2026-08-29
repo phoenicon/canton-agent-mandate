@@ -26,6 +26,9 @@ enforces in Daml:
 - owner revocation
 - immutable receipts for authorised charges
 
+Enforcement happens **not in the UI, not in Python, not in the model prompt — in
+Daml on the ledger.**
+
 Attack attempts are rejected on-ledger:
 
 ```
@@ -58,22 +61,52 @@ Capital authority and operational authority are different, and Canton lets us
 enforce both separately. An investor may commit £1.2m to the farm. **The AI agent
 still cannot spend £501 without permission.**
 
+## Threat model
+
+Do not trust the agent because its system prompt says "don't spend more than
+£500." **Assume the agent may fail or be compromised. Constrain what it can
+actually do.** The authority lives on the ledger, independent of the model, so a
+jailbroken or buggy agent still cannot exceed it.
+
 ## Evidence
 
-**12 / 12 Daml scripts green**
+**12 / 12 Daml scripts green.** Every line below is a real script; the
+`submitMustFail` guards mean the suite only passes if the ledger *rejects* each
+prohibited action.
 
-- under-cap charge succeeds
-- over-cap charge rejected
-- disallowed counterparty rejected
-- post-revocation charge rejected
-- agent cannot revoke its own mandate
-- stranger cannot charge
-- empty allow-list blocks spending
-- correct FarmNote investor can accept
-- wrong investor rejected
-- issuer / investor / regulator visibility confirmed
-- outsider sees no FarmNote contract
-- outsider cannot exercise FarmNote choices
+```text
+daml/Adversarial.daml:setup: ok
+daml/Adversarial.daml:agentCannotRevoke: ok
+daml/Adversarial.daml:strangerCannotCharge: ok
+daml/Adversarial.daml:ownerCannotCharge: ok
+daml/Adversarial.daml:adjustDoesNotWidenAllowList: ok
+daml/Adversarial.daml:emptyAllowListBlocksAll: ok
+daml/Demo.daml:demo: ok
+daml/FarmNoteTest.daml:testWrongInvestorCannotAccept: ok
+daml/FarmNoteTest.daml:testFarmNoteAccept: ok
+daml/FarmNoteTest.daml:testFarmNotePrivacy: ok
+daml/Test.daml:testMandate: ok
+daml/Test.daml:testExpiry: ok
+```
+
+If one of those prohibited actions succeeds, the test suite goes red.
+
+## Receipt and audit trail
+
+Every authorised charge creates an immutable `ChargeReceipt` on the ledger,
+recording:
+
+- counterparty (`payTo`)
+- amount
+- memo
+- cumulative spend after the charge (`spentAfter`)
+- mandate cap at the time (`capAtCharge`)
+- timestamp (`chargedAt`)
+- authorisation reason (`authorisedBy`)
+
+Successful actions therefore leave a permanent, signed record. Rejected attempts
+are demonstrated through failed submissions and the adversarial tests — they do
+not create a successful charge, and so leave no receipt.
 
 ## Run it
 
