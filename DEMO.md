@@ -1,7 +1,8 @@
 # DEMO — 60–90 second judge path
 
-A tight walkthrough of AIGENT.FARM. Two Canton use cases: bounded AI authority,
-and private farm capital.
+A tight walkthrough of **Canton Agent Mandate** — ledger-enforced financial
+authority for AI agents — shown in the *AIGENT.FARM* demo app. The Agent Mandate
+is the core; FarmNote is a privacy extension.
 
 ## 1. Problem (10s)
 
@@ -22,7 +23,7 @@ Owner delegates bounded authority to an AI agent. Run the payment attempts:
 
 > **The model can be compromised. The mandate still holds.**
 
-## 3. FarmNote (25s)
+## 3. FarmNote — privacy extension (25s)
 
 Show **Higher Eastcott Farm**. Switch the party view across the four tabs:
 

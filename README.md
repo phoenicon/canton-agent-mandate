@@ -1,19 +1,21 @@
-# AIGENT.FARM
+# Canton Agent Mandate
 
-**Private farm capital. Bounded AI authority. Enforced by Canton.**
+**Ledger-enforced financial authority for AI agents.**
 
-We built two Daml workflows around one idea: financial authority should be
-explicit, private, and enforceable **below the AI model**.
-
-- An AI farm agent can spend only within a ledger-enforced mandate.
-- A Farm SPV can issue a private FarmNote visible only to the parties who should
-  see it.
+An AI agent can be given money and a set of rules — a spend cap, an allow-list of
+counterparties, an expiry, and an owner who can revoke at any time. The rules are
+enforced in Daml, **below the AI model**, so they hold even if the model is
+compromised.
 
 > **The model can be compromised. The mandate still holds.**
 
+*AIGENT.FARM* is the demo application this is shown in: an AI farm agent spending
+under a mandate, and a Farm SPV issuing private capital. The submission itself is
+the **Agent Mandate** — bounded, on-ledger financial authority.
+
 ## What we built
 
-### 1. Bounded Farm Operations — Agent Mandate
+### 1. Agent Mandate — the primary challenge implementation
 
 A farm owner delegates limited financial authority to an AI agent. The mandate
 enforces in Daml:
@@ -35,9 +37,10 @@ Post-revocation payment   BLOCKED
 
 **AI decides what it wants to do. Canton decides what it is allowed to do.**
 
-### 2. Private Farm Capital — FarmNote
+### 2. FarmNote — a privacy / application extension
 
-A Farm SPV privately offers a FarmNote to a named investor.
+Built on top of the mandate work to show Canton's per-party privacy: a Farm SPV
+privately offers a FarmNote to a named investor.
 
 ```
 Farm SPV      issuer / signatory
@@ -49,13 +52,11 @@ Outsider      no authorised view
 The privacy boundary is tested with independent per-party `queryContractId`
 calls — not inferred from the UI.
 
-## Why the two pieces belong together
+## Why the extension belongs here
 
-Capital authority and operational authority are different. Canton lets us enforce
-both separately.
-
-An investor may commit £1.2m to the farm. **The AI agent still cannot spend £501
-without permission.**
+Capital authority and operational authority are different, and Canton lets us
+enforce both separately. An investor may commit £1.2m to the farm. **The AI agent
+still cannot spend £501 without permission.**
 
 ## Evidence
 
@@ -106,11 +107,13 @@ identity chain.
 ## Architecture
 
 ```
-                    AIGENT.FARM
+                 Canton Agent Mandate
+                (AIGENT.FARM demo app)
                          │
            ┌─────────────┴─────────────┐
            │                           │
     FARM OPERATIONS              FARM CAPITAL
+     (primary)                   (extension)
            │                           │
       Agent Mandate                 FarmNote
            │                           │
@@ -146,4 +149,4 @@ of truth.
 
 ---
 
-*Capital has rules. Agents have rules. Canton enforces both.*
+*AIGENT.FARM: capital has rules. Agents have rules. Canton enforces both.*

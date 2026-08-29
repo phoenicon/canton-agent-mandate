@@ -1,18 +1,18 @@
 # Architecture
 
-How AIGENT.FARM is put together, and the honest line between what is authorised
-and what is settled.
+How **Canton Agent Mandate** is put together — shown in the *AIGENT.FARM* demo
+app — and the honest line between what is authorised and what is settled.
 
 ## Two control planes
 
-Canton lets us enforce two *different* kinds of authority separately, on the same
-ledger:
+The Agent Mandate is the core submission; FarmNote is a privacy extension. Canton
+lets us enforce two *different* kinds of authority separately, on the same ledger:
 
-- **Operational authority** — what an AI agent may spend. Enforced by the
-  `Mandate` contract: cap, allow-list, expiry, owner revocation.
-- **Capital authority** — who may hold and see a private investment. Enforced by
-  the `FarmNote` contracts: issuer/investor signatories, regulator observer, and
-  no visibility for anyone else.
+- **Operational authority (primary)** — what an AI agent may spend. Enforced by
+  the `Mandate` contract: cap, allow-list, expiry, owner revocation.
+- **Capital authority (extension)** — who may hold and see a private investment.
+  Enforced by the `FarmNote` contracts: issuer/investor signatories, regulator
+  observer, and no visibility for anyone else.
 
 They are independent. An investor committing £1.2m to the farm does not widen the
 agent's £500 spend cap by a penny.
