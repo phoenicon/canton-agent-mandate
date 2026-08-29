@@ -66,6 +66,22 @@ runs `c8lab check` (ledger, parties, balances). It masks secrets and exits
 non-zero until everything needed for DevNet is green. No secret is ever written
 to the repo — `.env` is gitignored; `.env.example` is a secret-free template.
 
+### Frontend (`ui/`)
+
+A TanStack Start / React / TypeScript demo UI lives in [`ui/`](ui/). It is a
+**visualisation only**: all state comes from `ui/src/lib/demo-data.ts` — it is
+not yet wired to the Daml ledger or the adapter.
+
+```bash
+cd ui
+npm install
+npm run build        # production build (Vite + Nitro)
+npm run dev          # local dev server
+```
+
+Node 20/22/24 is recommended. The project was authored with Bun (`bun.lock` is
+kept), but `npm` works and is what the build was verified with.
+
 ## Architecture
 
 Two contracts, one proposal, in [`daml/Mandate.daml`](daml/Mandate.daml):
