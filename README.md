@@ -11,6 +11,8 @@ The attacks were blocked.
 
 > **The model can be compromised. The mandate still holds.**
 
+**▶ Live demo: https://agent-farm-folio.lovable.app**
+
 *AIGENT.FARM* is the farm/application demo context. The submission is the
 **Agent Mandate** (primary challenge); **FarmNote** is a privacy extension.
 
@@ -186,7 +188,7 @@ daml build
 daml test
 ```
 
-UI:
+UI — hosted: **https://agent-farm-folio.lovable.app** · or run locally:
 
 ```bash
 cd ui

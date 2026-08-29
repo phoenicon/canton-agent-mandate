@@ -1,5 +1,7 @@
 # Canton Agent Mandate — frontend
 
+**Live demo: https://agent-farm-folio.lovable.app**
+
 The *AIGENT.FARM* demo UI. Visualises the Daml workflows: the Agent Mandate
 (primary) and the FarmNote privacy extension. Mock state lives in
 `src/lib/demo-data.ts`. This UI does **not** claim live FarmNote settlement.
