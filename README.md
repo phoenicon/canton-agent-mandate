@@ -203,6 +203,7 @@ python3 adapter/doctor.py
 
 ## Deeper docs
 
+- **[Hackathon deck](docs/Canton-Agent-Mandate-Hackathon-Deck.pptx)** — the presentation (PowerPoint)
 - **[DEVNET.md](DEVNET.md)** · **[docs/devnet/](docs/devnet/README.md)** — network, parties, integration
 - **[docs/devnet/AUTH-AND-PARTIES.md](docs/devnet/AUTH-AND-PARTIES.md)** · **[TOKEN-TRANSFERS.md](docs/devnet/TOKEN-TRANSFERS.md)** · **[TROUBLESHOOTING.md](docs/devnet/TROUBLESHOOTING.md)** · **[LESSONS-LEARNED.md](docs/devnet/LESSONS-LEARNED.md)**
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — control planes and the identity chain
