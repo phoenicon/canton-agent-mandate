@@ -49,6 +49,23 @@ Rejected after revocation: 1
 Ledger enforced:           YES
 ```
 
+### DevNet preflight
+
+This repo targets **DevNet** (not LocalNet). Configure the environment, then run
+the preflight before spending a token on a real run:
+
+```bash
+cp .env.example .env       # fill in C8_CLIENT_SECRET and C8_REGISTRY from the team
+source .env
+python3 adapter/doctor.py
+```
+
+`doctor.py` is read-only. It confirms Daml 3.4.10 is the project SDK, that the
+external `c8lab.py` is found, that the required DevNet env vars are set, and then
+runs `c8lab check` (ledger, parties, balances). It masks secrets and exits
+non-zero until everything needed for DevNet is green. No secret is ever written
+to the repo — `.env` is gitignored; `.env.example` is a secret-free template.
+
 ## Architecture
 
 Two contracts, one proposal, in [`daml/Mandate.daml`](daml/Mandate.daml):
@@ -142,9 +159,19 @@ come from the ledger, not from Python.
    transfer as a *nested exercise*. That works because the **owner is a signatory
    of the `Mandate`**, so the owner's authority — needed to move the owner's coin
    — is available inside `Charge`, while the agent (no act-as rights on the owner)
-   can never move funds except through a `Charge` that passed. It requires the
-   Splice token-standard DARs compiled into this package plus a live registry, so
-   it is deferred to the LocalNet milestone.
+   can never move funds except through a `Charge` that passed.
+
+   **Feasibility check (done, not yet built):** compiling that nested exercise
+   needs the Splice token-standard interface DARs
+   (`splice-api-token-transfer-instruction-v1`, `-holding-v1`, `-metadata-v1`,
+   `splice-wallet`) as `data-dependencies`. **None are present locally** — the
+   SDK and toolkit ship only `daml-prim` / `daml-stdlib` / `daml-script`. On top
+   of that, the transfer uses the registry factory pattern (off-ledger
+   `factoryId` + choice context + disclosed contracts), which a choice cannot
+   fetch — those must be threaded into `Charge` as arguments and attached at
+   submit time — and the DAR package IDs must match what DevNet actually runs.
+   So it is **plausible but not "clearly straightforward"**, and only testable
+   against live DevNet. Deferred deliberately; see the estimate at the bottom.
 3. **No agent integration or frontend.** No MCP server / LLM holds the wallet yet
    (out of scope for this milestone); the `ChargeReceipt` contracts are the
    audit data a UI would render.
@@ -161,6 +188,31 @@ come from the ledger, not from Python.
 - **Enforcement stays in Daml.** The Python adapter is stdlib-only and holds no
   spending logic, by design — so it cannot become a second, weaker rule set.
 - Dropped the starter's `Iou.daml`; it is teaching scaffolding unrelated to D1.
+
+## Smallest path to atomic `Charge` → token movement (estimate, not built)
+
+Ordered by what blocks what. The gating risk is step 1, and none of it is
+testable without live DevNet.
+
+1. **Get the Splice token-standard interface DARs** at the exact versions DevNet
+   runs (from the Cantor8 team / a Splice release / extracted from a participant's
+   package store). This is the real blocker — they are not on this machine.
+2. Add them to `daml.yaml` as `data-dependencies`, and model the interface types
+   (`TransferFactory`, `TransferFactory_Transfer`, `ExtraArgs` / choice context).
+3. Extend `Charge` to take `factoryId` and the forwarded choice-context blob as
+   arguments, and after the guards `exercise` `TransferFactory_Transfer` with
+   `sender = owner` (owner is a signatory, so the authority is present).
+4. In the adapter, fetch factory + context + disclosed contracts from the
+   registry (reuse the logic already in `c8lab.transfer`), then submit
+   `exercise Charge {…, factoryId, context}` with the disclosed contracts
+   attached — one transaction, authorise and settle together.
+5. Verify on DevNet only. There is no offline test for the transfer leg.
+
+Effort once step 1 lands: modest (~a day of Daml + adapter wiring). Risk is
+concentrated in version-matching the DARs and modelling the choice context.
+Per instruction, **not implemented** — it is not clearly straightforward.
+
+---
 
 Started from `~/hackathon-toolkit/daml-starter` (SDK 3.4.10, target 2.1). SDK
 version deliberately unchanged. The adapter reuses `~/hackathon-toolkit/c8lab.py`
