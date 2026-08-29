@@ -43,8 +43,13 @@ export function AgentMandate() {
           onClick={() => setRevoked((r) => !r)}
           className="mt-4 w-full rounded-md border border-border-strong px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
-          {revoked ? "Reinstate mandate" : "Revoke mandate (owner)"}
+          {revoked ? "Reset UI demonstration" : "Revoke mandate (owner)"}
         </button>
+        {revoked && (
+          <p className="mt-2 font-mono text-[0.7rem] text-muted-foreground/80">
+            Demo reset only — does not represent a Daml Reinstate choice.
+          </p>
+        )}
       </Panel>
 
       <div className="space-y-4">
